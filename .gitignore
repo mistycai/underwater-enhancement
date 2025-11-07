@@ -1,0 +1,25 @@
+cat > .gitignore << 'EOF'
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env/
+.venv/
+venv/
+
+# jupyter
+.ipynb_checkpoints/
+
+# data & models
+data/
+!data/README.md
+results/
+!results/README.md
+runs/
+weights/
+
+# OS / misc
+.DS_Store
+EOF

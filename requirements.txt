@@ -1,0 +1,6 @@
+numpy
+opencv-python
+matplotlib
+scikit-image
+tqdm
+ultralytics        # for YOLOv8
