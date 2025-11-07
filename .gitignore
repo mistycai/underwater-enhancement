@@ -1,4 +1,3 @@
-cat > .gitignore << 'EOF'
 # python
 __pycache__/
 *.pyc
@@ -10,16 +9,20 @@ __pycache__/
 venv/
 
 # jupyter
+notebooks/*
+!notebooks/README.md
+!.gitkeep
 .ipynb_checkpoints/
 
 # data & models
-data/
+data/*
 !data/README.md
-results/
+results/*
 !results/README.md
 runs/
 weights/
 
 # OS / misc
 .DS_Store
-EOF
+
+__pycache__/
