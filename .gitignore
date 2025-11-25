@@ -10,6 +10,7 @@ venv/
 
 # jupyter
 notebooks/*
+!notebooks/*.ipynb
 !notebooks/README.md
 !.gitkeep
 .ipynb_checkpoints/
