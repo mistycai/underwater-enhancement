@@ -1,6 +1,7 @@
 from typing import Tuple
 import cv2
 import numpy as np
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 
 def to_float_rgb(img: np.ndarray) -> np.ndarray:
@@ -114,3 +115,21 @@ def contrast_gain(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
     if c_orig < 1e-6:
         return 0.0
     return float(c_enh / c_orig)
+
+
+def psnr_rgb(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
+    """
+    Peak Signal-to-Noise Ratio (dB) between two RGB images.
+    """
+    a = to_float_rgb(orig_rgb)
+    b = to_float_rgb(enhanced_rgb)
+    return float(peak_signal_noise_ratio(a, b, data_range=1.0))
+
+
+def ssim_rgb(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
+    """
+    Structural Similarity Index between two RGB images.
+    """
+    a = to_float_rgb(orig_rgb)
+    b = to_float_rgb(enhanced_rgb)
+    return float(structural_similarity(a, b, data_range=1.0, channel_axis=2))

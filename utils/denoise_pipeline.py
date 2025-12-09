@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Optional
 import cv2
 import numpy as np
 
-from utils.quality_metrics import contrast_gain, uciqe, uiqm
+from utils.quality_metrics import contrast_gain, psnr_rgb, ssim_rgb, uciqe, uiqm
 
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
@@ -171,9 +171,13 @@ def compute_metrics(orig_bgr: np.ndarray, enhanced_bgr: np.ndarray) -> Dict[str,
     uciqe_enh = float(uciqe(rgb_enh))
 
     def pct_change(orig_val: float, new_val: float) -> float:
-        if abs(orig_val) < 1e-8:
+        if abs(orig_val) < 1e-8 or not np.isfinite(orig_val):
             return 0.0
         return float((new_val - orig_val) / abs(orig_val) * 100.0)
+
+    # Similarity metrics between original and enhanced images.
+    psnr_db = float(psnr_rgb(rgb_orig, rgb_enh))
+    ssim_val = float(ssim_rgb(rgb_orig, rgb_enh))
 
     contrast_ratio = float(contrast_gain(rgb_orig, rgb_enh))  # ratio >=0
     contrast_pct = (contrast_ratio - 1.0) * 100.0
@@ -182,6 +186,12 @@ def compute_metrics(orig_bgr: np.ndarray, enhanced_bgr: np.ndarray) -> Dict[str,
         "uiqm_pct_change": pct_change(uiqm_orig, uiqm_enh),
         "uciqe_pct_change": pct_change(uciqe_orig, uciqe_enh),
         "contrast_pct_change": contrast_pct,
+        "psnr_db": psnr_db,
+        # Interpret change relative to perfect similarity (1.0).
+        "ssim": ssim_val,
+        "ssim_pct_change": (ssim_val - 1.0) * 100.0,
+        # For PSNR (unbounded), express change vs. a 60 dB high-quality reference.
+        "psnr_pct_change": (psnr_db / 60.0) * 100.0,
     }
 
 
@@ -232,11 +242,14 @@ def process_directory(
 ) -> List[Dict[str, float]]:
     results: List[Dict[str, float]] = []
     processed = 0
-    limit = max_images if max_images is None or max_images > 0 else None
+    # Only apply a limit when max_images is a positive integer.
+    limit = max_images if (max_images is not None and max_images > 0) else None
+    print(f"Processing directory: {input_dir} Max images: {limit}")
 
     for img_path in _iter_images(input_dir):
         if limit is not None and processed >= limit:
             break
+        processed += 1  # count attempted images to ensure we stop promptly
         try:
             res = process_image(
                 img_path=img_path,
@@ -250,7 +263,6 @@ def process_directory(
                 print(f"[OK] {img_path} -> {res.get('output_path')}")
             else:
                 print(f"[OK] {img_path} (metrics only)")
-            processed += 1
         except Exception as exc:
             print(f"[FAIL] {img_path}: {exc}")
     return results
@@ -259,12 +271,25 @@ def process_directory(
 def summarize_metrics(results: List[Dict[str, float]]) -> Dict[str, float]:
     if not results:
         return {}
-    keys = ["uiqm_pct_change", "uciqe_pct_change", "contrast_pct_change"]
+    keys = [
+        "uiqm_pct_change",
+        "uciqe_pct_change",
+        "contrast_pct_change",
+        "psnr_pct_change",
+        "ssim_pct_change",
+    ]
     summary: Dict[str, float] = {}
     for key in keys:
         vals = [r[key] for r in results if key in r]
         if vals:
             summary[f"mean_{key}"] = float(np.mean(vals))
+    # Also expose absolute mean PSNR/SSIM for reference.
+    psnr_vals = [r["psnr_db"] for r in results if "psnr_db" in r]
+    if psnr_vals:
+        summary["mean_psnr_db"] = float(np.mean(psnr_vals))
+    ssim_vals = [r["ssim"] for r in results if "ssim" in r]
+    if ssim_vals:
+        summary["mean_ssim"] = float(np.mean(ssim_vals))
     return summary
 
 
