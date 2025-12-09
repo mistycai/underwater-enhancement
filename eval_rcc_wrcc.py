@@ -9,6 +9,7 @@ import numpy as np
 from src.color_correction.rcc_wrcc import rcc_rgb, wrcc_rgb
 from utils.quality_metrics import uiqm, uciqe, contrast_gain
 
+
 def list_images(root_dir: str,
                 exts: List[str] = (".jpg", ".jpeg", ".png", ".bmp")) -> List[str]:
     files: List[str] = []
@@ -69,7 +70,11 @@ def evaluate_setting(
             continue
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-        if method == "rcc":
+        # ===== 方法分支 =====
+        if method == "raw":
+            # 不做任何增强，直接用原图
+            enhanced = rgb
+        elif method == "rcc":
             enhanced = rcc_rgb(rgb, alpha=alpha)
         elif method == "wrcc":
             if window_size is None:
@@ -82,11 +87,15 @@ def evaluate_setting(
             )
         else:
             raise ValueError(f"Unknown method: {method}")
+        # =====================
 
         uiqm_vals.append(uiqm(enhanced))
         uciqe_vals.append(uciqe(enhanced))
+        # 对比度增益：raw 时就是对自己比，看你的实现一般会得到 1.0 或类似基准
         cg_vals.append(contrast_gain(rgb, enhanced))
-        if save_imgs:
+
+        if save_imgs and method != "raw":
+            # 原图一般不需要重复保存
             save_enhanced_image(
                 enhanced_rgb=enhanced,
                 orig_path=path,
@@ -106,6 +115,7 @@ def evaluate_setting(
         "uciqe": float(np.mean(uciqe_vals)),
         "contrast_gain": float(np.mean(cg_vals)),
     }
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -150,43 +160,62 @@ def main() -> None:
 
     results: List[dict] = []
 
-    if args.methods in ("rcc", "both"):
-        for alpha in [0.5, 1.0, 1.5, 2.0,2.5]:
-            metrics = evaluate_setting(
-                image_paths=image_paths,
-                val_root=val_dir,
-                method="rcc",
-                alpha=alpha,
-                save_imgs=args.save_imgs,
-                out_root=args.out_dir,
-            )
-            cfg = {"method": "rcc", "alpha": alpha}
-            print("\nConfig:", cfg)
-            print("Metrics:", metrics)
-            results.append({**cfg, **metrics})
+    # # ===== baseline =====
+    # raw_metrics = evaluate_setting(
+    #     image_paths=image_paths,
+    #     val_root=val_dir,
+    #     method="raw",
+    #     alpha=1.0,       
+    #     window_size=None,
+    #     guided_radius=8,
+    #     save_imgs=False,
+    #     out_root=None,
+    # )
+    # cfg_raw = {"method": "raw"}
+    # print("\nConfig:", cfg_raw)
+    # print("Metrics:", raw_metrics)
+    # results.append({**cfg_raw, **raw_metrics})
+    # ============================================
+
+    # 如需同时测 RCC，把下面这块取消注释即可
+    # if args.methods in ("rcc", "both"):
+    #     for alpha in [0.5, 1.0, 1.5, 2.0, 2.5]:
+    #         metrics = evaluate_setting(
+    #             image_paths=image_paths,
+    #             val_root=val_dir,
+    #             method="rcc",
+    #             alpha=alpha,
+    #             save_imgs=args.save_imgs,
+    #             out_root=args.out_dir,
+    #         )
+    #         cfg = {"method": "rcc", "alpha": alpha}
+    #         print("\nConfig:", cfg)
+    #         print("Metrics:", metrics)
+    #         results.append({**cfg, **metrics})
 
     if args.methods in ("wrcc", "both"):
-        for alpha in [1.0, 1.2, 1.4]:
-            for w in [9, 15]:
-                metrics = evaluate_setting(
-                    image_paths=image_paths,
-                    val_root=val_dir,
-                    method="wrcc",
-                    alpha=alpha,
-                    window_size=w,
-                    guided_radius=8,
-                    save_imgs=args.save_imgs,
-                    out_root=args.out_dir,
-                )
-                cfg = {
-                    "method": "wrcc",
-                    "alpha": alpha,
-                    "window_size": w,
-                    "guided_radius": 8,
-                }
-                print("\nConfig:", cfg)
-                print("Metrics:", metrics)
-                results.append({**cfg, **metrics})
+        for alpha in [0.5]:
+            for w in [9]:  
+                for r in [2]:
+                    metrics = evaluate_setting(
+                        image_paths=image_paths,
+                        val_root=val_dir,
+                        method="wrcc",
+                        alpha=alpha,
+                        window_size=w,
+                        guided_radius=r,
+                        save_imgs=args.save_imgs,
+                        out_root=args.out_dir,
+                    )
+                    cfg = {
+                        "method": "wrcc",
+                        "alpha": alpha,
+                        "window_size": w,
+                        "guided_radius": r,
+                    }
+                    print("\nConfig:", cfg)
+                    print("Metrics:", metrics)
+                    results.append({**cfg, **metrics})
 
     results_sorted = sorted(results, key=lambda x: x["uiqm"], reverse=True)
 
