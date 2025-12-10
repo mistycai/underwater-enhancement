@@ -1,16 +1,21 @@
 # src/contrast/gating.py
+
+import numpy as np
 from .stats import luminance_std, average_gradient
 
 
-def should_apply_clahe(L_norm, sigma_thresh=0.10, grad_thresh=0.02):
-    '''
-    Decide whether to apply CLAHE
-    '''
+def should_apply_clahe(
+    L_norm: np.ndarray,
+    sigma_thresh: float = 0.18,
+    grad_thresh: float = 0.06,
+) -> bool:
     sigma_L = luminance_std(L_norm)
     ag_L = average_gradient(L_norm)
+    return (sigma_L < sigma_thresh) or (ag_L < grad_thresh)
 
-    # low contrast / gradients -> enhance
-    if sigma_L < sigma_thresh or ag_L < grad_thresh:
-        return True
-    else:
-        return False
+
+def compute_gating_stats(L_norm: np.ndarray) -> dict:
+    return {
+        "sigma_L": float(luminance_std(L_norm)),
+        "grad_L": float(average_gradient(L_norm)),
+    }
