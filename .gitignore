@@ -9,7 +9,6 @@ __pycache__/
 venv/
 
 # jupyter
-notebooks/*
 !notebooks/README.md
 !.gitkeep
 .ipynb_checkpoints/
@@ -19,8 +18,7 @@ data/*
 !data/README.md
 results/*
 !results/README.md
-runs/
-weights/
+echo "*.pt" >> .gitignore
 
 # OS / misc
 .DS_Store
