@@ -9,6 +9,8 @@ __pycache__/
 venv/
 
 # jupyter
+notebooks/*
+!notebooks/*.ipynb
 !notebooks/README.md
 !.gitkeep
 .ipynb_checkpoints/
@@ -18,9 +20,23 @@ data/*
 !data/README.md
 results/*
 !results/README.md
-echo "*.pt" >> .gitignore
+runs/
+weights/
 
 # OS / misc
 .DS_Store
 
 __pycache__/
+
+# local experiment outputs
+training logs/
+runs/
+*.pt
+
+# CLAHE test outputs
+clahe_*.png
+pipeline_test.png
+clahe_samples_out/
+
+# metrics demo outputs
+src/metrics/results/
