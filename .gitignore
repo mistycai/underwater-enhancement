@@ -9,8 +9,6 @@ __pycache__/
 venv/
 
 # jupyter
-notebooks/*
-!notebooks/*.ipynb
 !notebooks/README.md
 !.gitkeep
 .ipynb_checkpoints/
@@ -42,3 +40,7 @@ clahe_samples_out/
 src/metrics/results/
 
 src/results/*
+
+*.jpg
+*.png
+*.zip
