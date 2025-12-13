@@ -40,3 +40,5 @@ clahe_samples_out/
 
 # metrics demo outputs
 src/metrics/results/
+
+src/results/*
