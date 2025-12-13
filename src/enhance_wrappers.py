@@ -10,7 +10,8 @@ from dataclasses import dataclass
 
 
 ########################## RCC / WRCC ##########################
-from color_correction.rcc_wrcc import rcc_rgb, wrcc_rgb
+from .color_correction.rcc_wrcc import rcc_rgb, wrcc_rgb
+
 def apply_rcc_bgr(
     bgr_img: np.ndarray,
     use_wrcc: bool = True,
@@ -27,7 +28,7 @@ def apply_rcc_bgr(
 
 
 ########################## RCC --> White Balance ##########################
-from color_correction.white_balance import gray_world_white_balance
+from .color_correction.white_balance import gray_world_white_balance
 def rcc_plus_white_balance(
     bgr_img: np.ndarray,
     rcc_alpha: float = 0.5,
@@ -86,7 +87,7 @@ def apply_color_correction_bgr(
 
 
 ########################## CLAHE ##########################
-from contrast.pipeline import CLAHEConfig, CLAHEContrastEnhancer
+from .contrast.pipeline import CLAHEConfig, CLAHEContrastEnhancer
 # from contrast.stats import luminance_std, average_gradient
 # from contrast.color_space import bgr_to_lab_luminance
 

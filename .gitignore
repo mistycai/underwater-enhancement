@@ -44,3 +44,7 @@ src/results/*
 *.jpg
 *.png
 *.zip
+*.yaml
+*.csv
+*.json
+*.tex
