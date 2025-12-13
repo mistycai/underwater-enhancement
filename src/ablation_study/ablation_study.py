@@ -51,12 +51,12 @@ RECOMMENDED_SAMPLES = {'quick': 50, 'ablation': 200, 'thorough': 500, 'full': 10
 # Experiment configurations
 EXPERIMENT_CONFIGS = {
     'rcc_alpha': {
-        'param': 'rcc_alpha', 'values': [0.5, 1.0, 1.5, 2.0, 2.5],
+        'param': 'rcc_alpha', 'values': [0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
         'fixed': {'color_correction': 'rcc', 'use_wrcc': False, 'wb_lambda': 0.0},
         'description': 'RCC with different alpha values',
     },
     'wrcc_alpha': {
-        'param': 'rcc_alpha', 'values': [0.5, 1.0, 1.5, 2.0, 2.5],
+        'param': 'rcc_alpha', 'values': [0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
         'fixed': {'color_correction': 'rcc', 'use_wrcc': True, 'wb_lambda': 0.0, 'rcc_window_size': 9, 'rcc_guided_radius': 8},
         'description': 'WRCC with different alpha values',
     },
