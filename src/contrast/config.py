@@ -1,4 +1,3 @@
-# src/contrast/config.py
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -12,10 +11,7 @@ class CLAHEConfig:
     # color space
     use_lab: bool = True    # LAB-L vs HSV-V
 
-    # detection-aware gating thresholds
-    # L is normalized to [0,1], AG(L) is computed on that same scale
     tau_c: float = 0.17 # sigma_L threshold
     tau_g: float = 0.20 # AG(L) threshold
 
-    # gating toggles
     enable_gating: bool = True  # False: always apply CLAHE

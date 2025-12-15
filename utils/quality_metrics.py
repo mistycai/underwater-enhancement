@@ -13,17 +13,11 @@ def to_float_rgb(img: np.ndarray) -> np.ndarray:
 
 
 def from_float_rgb(img: np.ndarray) -> np.ndarray:
-    """
-    Convert float32 RGB in [0,1] to uint8 [0,255].
-    """
     img = np.clip(img * 255.0, 0.0, 255.0)
     return img.astype(np.uint8)
 
-
+# UCIQE = c1 * sigma_c + c2 * con_l + c3 * mu_s
 def uciqe(image_rgb: np.ndarray) -> float:
-    """
-    UCIQE = c1 * sigma_c + c2 * con_l + c3 * mu_s
-    """
     img = to_float_rgb(image_rgb)
     img_uint8 = from_float_rgb(img)
 
@@ -80,7 +74,7 @@ def _uism(image_rgb: np.ndarray) -> float:
     Eg = float(np.mean(_gradient_magnitude(G)))
     Eb = float(np.mean(_gradient_magnitude(B)))
 
-    # Standard luminance weights
+    # standard luminance weights
     w_r, w_g, w_b = 0.299, 0.587, 0.114
     uism_val = w_r * Er + w_g * Eg + w_b * Eb
     return float(uism_val)
@@ -105,11 +99,8 @@ def luminance_contrast(image_rgb: np.ndarray) -> float:
     Y = 0.299 * img[..., 0] + 0.587 * img[..., 1] + 0.114 * img[..., 2]
     return float(np.std(Y))
 
-
+# contrast_gain = contrast(enhanced) / contrast(original)
 def contrast_gain(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
-    """
-    contrast_gain = contrast(enhanced) / contrast(original)
-    """
     c_orig = luminance_contrast(orig_rgb)
     c_enh = luminance_contrast(enhanced_rgb)
     if c_orig < 1e-6:
@@ -118,18 +109,12 @@ def contrast_gain(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
 
 
 def psnr_rgb(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
-    """
-    Peak Signal-to-Noise Ratio (dB) between two RGB images.
-    """
     a = to_float_rgb(orig_rgb)
     b = to_float_rgb(enhanced_rgb)
     return float(peak_signal_noise_ratio(a, b, data_range=1.0))
 
 
 def ssim_rgb(orig_rgb: np.ndarray, enhanced_rgb: np.ndarray) -> float:
-    """
-    Structural Similarity Index between two RGB images.
-    """
     a = to_float_rgb(orig_rgb)
     b = to_float_rgb(enhanced_rgb)
     return float(structural_similarity(a, b, data_range=1.0, channel_axis=2))

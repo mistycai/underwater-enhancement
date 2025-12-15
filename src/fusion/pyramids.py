@@ -4,7 +4,6 @@ from typing import List
 
 
 def build_gaussian_pyramid(img: np.ndarray, levels: int) -> List[np.ndarray]:
-    """Build Gaussian pyramid with specified number of levels."""
     pyr = [img]
     for _ in range(1, levels):
         img = cv2.pyrDown(img)
@@ -13,7 +12,6 @@ def build_gaussian_pyramid(img: np.ndarray, levels: int) -> List[np.ndarray]:
 
 
 def build_laplacian_pyramid(img: np.ndarray, levels: int) -> List[np.ndarray]:
-    """Build Laplacian pyramid with specified number of levels."""
     g_pyr = build_gaussian_pyramid(img, levels)
     l_pyr = []
     for i in range(levels - 1):
@@ -25,7 +23,6 @@ def build_laplacian_pyramid(img: np.ndarray, levels: int) -> List[np.ndarray]:
 
 
 def collapse_laplacian_pyramid(l_pyr: List[np.ndarray]) -> np.ndarray:
-    """Collapse Laplacian pyramid to reconstruct image."""
     current = l_pyr[-1]
     for level in range(len(l_pyr) - 2, -1, -1):
         size = (l_pyr[level].shape[1], l_pyr[level].shape[0])

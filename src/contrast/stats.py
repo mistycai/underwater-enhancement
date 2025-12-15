@@ -1,4 +1,3 @@
-# src/contrast/stats.py
 import cv2
 import numpy as np
 

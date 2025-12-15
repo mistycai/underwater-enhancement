@@ -5,9 +5,6 @@ import cv2
 import numpy as np
 from typing import List, Tuple, Dict
 
-
-# ======================== utilities ========================
-
 def to_float01(img: np.ndarray) -> np.ndarray:
     f = img.astype(np.float32)
     if f.max() > 1.5:

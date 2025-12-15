@@ -20,7 +20,7 @@ def compute_psnr(img1, img2):
 
     mse = np.mean((img1 - img2) ** 2)
     if mse == 0:
-        return float('inf')  # Images are identical
+        return float('inf') 
 
     PIXEL_MAX = 255.0
     return 20 * np.log10(PIXEL_MAX / np.sqrt(mse))

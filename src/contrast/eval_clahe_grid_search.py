@@ -1,36 +1,3 @@
-#!/usr/bin/env python3
-"""
-Standard CLAHE Grid Search with Image Saving
-
-Location: src/contrast/eval_clahe_grid_search.py
-
-Purpose:
-  - Grid search over clip_limit × tile_size for standard CLAHE
-  - Save enhanced images for each config (for later mAP evaluation with YOLO)
-  - Compute comprehensive metrics (UIQM, UCIQE, contrast, entropy, etc.)
-  - Generate publication-ready statistics and LaTeX tables
-
-Run:
-  python3 -m src.contrast.eval_clahe_grid_search \
-    --val_dir ./data/RUOD/RUOD_pic/train \
-    --num-samples 200 \
-    --seed 42 \
-    --save-imgs \
-    --out-dir ./results/clahe_grid_search
-
-Output structure:
-  results/clahe_grid_search/
-  ├── images/
-  │   ├── clip1.0_tile8x8/
-  │   │   ├── 000001.jpg
-  │   │   └── ...
-  │   ├── clip2.0_tile16x16/
-  │   └── ...
-  ├── grid_results.csv
-  ├── grid_results_summary.txt
-  └── grid_table.tex
-"""
-
 import argparse
 import csv
 import glob
@@ -45,10 +12,6 @@ import numpy as np
 from ..enhance_wrappers import apply_clahe_bgr
 from ..metrics.compute_metrics import compute_metrics
 
-
-# ----------------------------
-# IO utilities
-# ----------------------------
 def list_images(root_dir: str, exts: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp")) -> List[str]:
     files: List[str] = []
     for ext in exts:
@@ -109,9 +72,6 @@ def _percentile(xs: List[float], p: float) -> float:
     return float(np.percentile(xs, p)) if xs else 0.0
 
 
-# ----------------------------
-# Grid search configs
-# ----------------------------
 def get_grid_configs(
     clips: List[float] = None,
     tiles: List[int] = None,
@@ -137,10 +97,6 @@ def get_grid_configs(
 def cfg_to_name(clip: float, tile: Tuple[int, int]) -> str:
     return f"clip{clip:.1f}_tile{tile[0]}x{tile[1]}"
 
-
-# ----------------------------
-# Evaluation with comprehensive stats
-# ----------------------------
 def evaluate_single_config(
     image_paths: List[str],
     val_root: str,
@@ -155,14 +111,12 @@ def evaluate_single_config(
     if save_imgs:
         img_dir = os.path.join(out_root, "images", cfg_name)
         ensure_dir(img_dir)
-    
-    # Per-image metrics
+
     uiqm_vals, uciqe_vals, contrast_vals = [], [], []
     entropy_vals, colorful_vals, avggrad_vals = [], [], []
     uiqm_deltas, uciqe_deltas = [], []
     gains = []
     
-    # Raw baseline (computed once per image)
     raw_uiqm_vals, raw_uciqe_vals = [], []
     
     for i, path in enumerate(image_paths):
@@ -171,13 +125,11 @@ def evaluate_single_config(
             continue
         
         basename = os.path.splitext(os.path.basename(path))[0]
-        
-        # Raw metrics
+
         raw_m = compute_metrics(bgr, bgr, name="raw")
         raw_uiqm_vals.append(raw_m.uiqm)
         raw_uciqe_vals.append(raw_m.uciqe)
-        
-        # Apply CLAHE
+
         enh_bgr, info = apply_clahe_bgr(
             bgr,
             clip_limit=clip_limit,
@@ -185,7 +137,7 @@ def evaluate_single_config(
             use_gating=False,
         )
         
-        # Enhanced metrics
+
         enh_m = compute_metrics(enh_bgr, bgr, name="clahe")
         
         uiqm_vals.append(enh_m.uiqm)
@@ -199,7 +151,6 @@ def evaluate_single_config(
         uciqe_deltas.append(enh_m.uciqe - raw_m.uciqe)
         gains.append(float(info.get("contrast_gain", 1.0)))
         
-        # Save enhanced image
         if save_imgs:
             out_path = os.path.join(img_dir, f"{basename}.jpg")
             cv2.imwrite(out_path, enh_bgr)
@@ -207,8 +158,7 @@ def evaluate_single_config(
     n = len(uiqm_vals)
     if n == 0:
         return {"num_images": 0, "config": cfg_name}
-    
-    # Comprehensive statistics
+
     result = {
         "config": cfg_name,
         "clip_limit": clip_limit,
@@ -256,10 +206,6 @@ def evaluate_single_config(
     
     return result
 
-
-# ----------------------------
-# Output generation
-# ----------------------------
 def write_csv(rows: List[Dict[str, Any]], out_path: str) -> None:
     if not rows:
         return
@@ -274,9 +220,8 @@ def write_csv(rows: List[Dict[str, Any]], out_path: str) -> None:
 def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Namespace) -> None:
     ensure_dir(os.path.dirname(out_path) or ".")
     
-    # Sort by UIQM
     rows_by_uiqm = sorted(rows, key=lambda r: r.get("uiqm_mean", 0), reverse=True)
-    # Sort by UCIQE
+
     rows_by_uciqe = sorted(rows, key=lambda r: r.get("uciqe_mean", 0), reverse=True)
     
     with open(out_path, "w") as f:
@@ -291,8 +236,7 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
         f.write(f"Clips: {args.clips}\n")
         f.write(f"Tiles: {args.tiles}\n")
         f.write(f"Total configs: {len(rows)}\n\n")
-        
-        # Raw baseline
+
         if rows:
             f.write("-"*80 + "\n")
             f.write("RAW BASELINE\n")
@@ -300,7 +244,6 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
             f.write(f"UIQM:  {rows[0]['raw_uiqm_mean']:.4f} ± {rows[0]['raw_uiqm_std']:.4f}\n")
             f.write(f"UCIQE: {rows[0]['raw_uciqe_mean']:.4f}\n\n")
         
-        # Top 5 by UIQM
         f.write("-"*80 + "\n")
         f.write("TOP 5 CONFIGS BY UIQM\n")
         f.write("-"*80 + "\n")
@@ -309,7 +252,6 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
             f.write(f"{i+1:<5} {r['config']:<20} {r['uiqm_mean']:>10.4f} {r['uiqm_delta_mean']:>+10.4f} "
                    f"{r['uciqe_mean']:>10.4f} {r['uciqe_delta_mean']:>+10.4f} {r['contrast_gain_mean']:>8.3f}\n")
         
-        # Top 5 by UCIQE
         f.write("\n")
         f.write("-"*80 + "\n")
         f.write("TOP 5 CONFIGS BY UCIQE\n")
@@ -318,8 +260,7 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
         for i, r in enumerate(rows_by_uciqe[:5]):
             f.write(f"{i+1:<5} {r['config']:<20} {r['uciqe_mean']:>10.4f} {r['uciqe_delta_mean']:>+10.4f} "
                    f"{r['uiqm_mean']:>10.4f} {r['uiqm_delta_mean']:>+10.4f}\n")
-        
-        # Full results table
+
         f.write("\n")
         f.write("-"*80 + "\n")
         f.write("FULL RESULTS (sorted by UIQM)\n")
@@ -329,8 +270,7 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
             f.write(f"{r['config']:<20} {r['uiqm_mean']:>8.4f} {r['uiqm_std']:>6.3f} {r['uiqm_delta_mean']:>+8.4f} "
                    f"{r['uciqe_mean']:>8.4f} {r['uciqe_delta_mean']:>+8.4f} {r['contrast_gain_mean']:>6.3f} "
                    f"{r['uiqm_improved_rate']:>6.1f}%\n")
-        
-        # Best config recommendation
+
         f.write("\n")
         f.write("="*80 + "\n")
         f.write("RECOMMENDATIONS\n")
@@ -348,9 +288,7 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
         f.write(f"  Config: {best_uciqe['config']}\n")
         f.write(f"  UCIQE: {best_uciqe['uciqe_mean']:.4f} (Δ={best_uciqe['uciqe_delta_mean']:+.4f})\n")
         f.write(f"  UIQM: {best_uciqe['uiqm_mean']:.4f}\n")
-        
-        # Balanced recommendation
-        # Find config with best (UIQM_rank + UCIQE_rank)
+
         uiqm_ranks = {r['config']: i for i, r in enumerate(rows_by_uiqm)}
         uciqe_ranks = {r['config']: i for i, r in enumerate(rows_by_uciqe)}
         combined = [(r['config'], uiqm_ranks[r['config']] + uciqe_ranks[r['config']]) for r in rows]
@@ -366,14 +304,11 @@ def write_summary(rows: List[Dict[str, Any]], out_path: str, args: argparse.Name
 def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: int) -> None:
     ensure_dir(os.path.dirname(out_path) or ".")
     
-    # Sort by clip, then tile
     rows_sorted = sorted(rows, key=lambda r: (r['clip_limit'], r['tile_size']))
-    
-    # Find best values for bolding
+
     best_uiqm = max(r['uiqm_mean'] for r in rows)
     best_uciqe = max(r['uciqe_mean'] for r in rows)
     
-    # Get unique clips and tiles
     clips = sorted(set(r['clip_limit'] for r in rows))
     tiles = sorted(set(r['tile_size'] for r in rows))
     
@@ -381,8 +316,7 @@ def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: in
         f.write("% CLAHE Grid Search Results\n")
         f.write(f"% Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"% Samples: {num_samples}\n\n")
-        
-        # Table 1: UIQM results (clip × tile matrix)
+
         f.write("% Table 1: UIQM by clip_limit and tile_size\n")
         f.write("\\begin{table}[t]\n")
         f.write("\\centering\n")
@@ -390,14 +324,12 @@ def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: in
                f"Higher is better. Best result in bold.}}\n")
         f.write("\\label{tab:clahe_grid_uiqm}\n")
         
-        # Header
         cols = "c" + "c" * len(tiles)
         f.write(f"\\begin{{tabular}}{{{cols}}}\n")
         f.write("\\hline\n")
         f.write("Clip & " + " & ".join([f"${t}\\times{t}$" for t in tiles]) + " \\\\\n")
         f.write("\\hline\n")
         
-        # Data rows
         for clip in clips:
             row_data = [f"{clip:.1f}"]
             for tile in tiles:
@@ -417,7 +349,6 @@ def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: in
         f.write("\\end{tabular}\n")
         f.write("\\end{table}\n\n")
         
-        # Table 2: UCIQE results
         f.write("% Table 2: UCIQE by clip_limit and tile_size\n")
         f.write("\\begin{table}[t]\n")
         f.write("\\centering\n")
@@ -447,8 +378,7 @@ def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: in
         f.write("\\hline\n")
         f.write("\\end{tabular}\n")
         f.write("\\end{table}\n\n")
-        
-        # Table 3: Combined table with deltas
+
         f.write("% Table 3: Combined results with deltas\n")
         f.write("\\begin{table*}[t]\n")
         f.write("\\centering\n")
@@ -474,9 +404,6 @@ def write_latex_table(rows: List[Dict[str, Any]], out_path: str, num_samples: in
         f.write("\\end{table*}\n")
 
 
-# ----------------------------
-# CLI
-# ----------------------------
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Standard CLAHE Grid Search")
     p.add_argument("--val_dir", type=str, required=True)
@@ -485,13 +412,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--sample-list", type=str, default=None)
     p.add_argument("--save-sample-list", type=str, default=None)
     
-    # Grid parameters
     p.add_argument("--clips", type=float, nargs="+", default=[1.0, 2.0, 3.0, 4.0, 6.0],
                    help="Clip limit values to test")
     p.add_argument("--tiles", type=int, nargs="+", default=[4, 8, 16, 32],
                    help="Tile sizes to test (NxN)")
     
-    # Output
     p.add_argument("--save-imgs", action="store_true", help="Save enhanced images for each config")
     p.add_argument("--out-dir", type=str, default="./results/clahe_grid_search")
     p.add_argument("--quiet", "-q", action="store_true")
@@ -518,7 +443,6 @@ def main() -> None:
     )
     print(f"[INFO] Using {len(image_paths)} images")
     
-    # Generate grid configs
     cfgs = get_grid_configs(clips=args.clips, tiles=args.tiles)
     print(f"[INFO] Grid search: {len(args.clips)} clips × {len(args.tiles)} tiles = {len(cfgs)} configs")
     print(f"[INFO] Clips: {args.clips}")
@@ -527,8 +451,7 @@ def main() -> None:
     if args.save_imgs:
         ensure_dir(args.out_dir)
         print(f"[INFO] Saving images to: {args.out_dir}/images/")
-    
-    # Run grid search
+
     results = []
     
     print("\n" + "="*80)
@@ -558,10 +481,8 @@ def main() -> None:
             print(f"UIQM={result['uiqm_mean']:.4f} (Δ={result['uiqm_delta_mean']:+.4f}), "
                   f"UCIQE={result['uciqe_mean']:.4f} (Δ={result['uciqe_delta_mean']:+.4f})")
     
-    # Sort by UIQM for display
     results_by_uiqm = sorted(results, key=lambda r: r.get("uiqm_mean", 0), reverse=True)
     
-    # Print summary
     print("\n" + "="*80)
     print("RESULTS SUMMARY")
     print("="*80)
@@ -574,33 +495,27 @@ def main() -> None:
     for i, r in enumerate(results_by_uiqm[:10]):
         print(f"{i+1:<5} {r['config']:<20} {r['uiqm_mean']:>10.4f} {r['uiqm_delta_mean']:>+10.4f} "
               f"{r['uciqe_mean']:>10.4f} {r['uciqe_delta_mean']:>+10.4f}")
-    
-    # Save outputs
+
     ensure_dir(args.out_dir)
     
-    # CSV
     csv_path = os.path.join(args.out_dir, "grid_results.csv")
     write_csv(results_by_uiqm, csv_path)
     print(f"\n[INFO] Saved CSV: {csv_path}")
-    
-    # Summary text
+
     summary_path = os.path.join(args.out_dir, "grid_results_summary.txt")
     write_summary(results, summary_path, args)
     print(f"[INFO] Saved summary: {summary_path}")
-    
-    # LaTeX tables
+
     latex_path = os.path.join(args.out_dir, "grid_table.tex")
     write_latex_table(results, latex_path, len(image_paths))
     print(f"[INFO] Saved LaTeX: {latex_path}")
-    
-    # Save sample list for reproducibility
+
     sample_list_path = os.path.join(args.out_dir, f"sample_list_{args.num_samples}_seed{args.seed}.txt")
     with open(sample_list_path, "w") as f:
         for p in image_paths:
             f.write(p + "\n")
     print(f"[INFO] Saved sample list: {sample_list_path}")
     
-    # Best config
     best = results_by_uiqm[0]
     print("\n" + "="*80)
     print("BEST CONFIG (by UIQM)")

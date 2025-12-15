@@ -1,23 +1,3 @@
-#!/usr/bin/env python3
-"""
-CLAHE Ablation Study Script (high-standard, reproducible sampling + compute_metrics)
-
-Location (suggested):
-  src/contrast/eval_clahe_ablation.py
-
-What it does:
-  - Samples a fixed, reproducible subset of images (or loads a saved sample list)
-  - Runs CLAHE-only enhancement via enhance_wrappers.apply_clahe_bgr (NO other modules)
-  - Computes metrics using metrics.compute_metrics.compute_metrics (UIQM/UCIQE/contrast/entropy/colorfulness/avg_gradient)
-  - Reports mean metrics + deltas vs raw
-  - Optionally saves enhanced images in organized folders
-  - Optionally exports CSV
-
-Run:
-  python3 -m src.contrast.eval_clahe_ablation --val_dir ./data/RUOD/RUOD_pic/train --experiment clip --num-samples 200 --seed 42
-  python3 -m src.contrast.eval_clahe_ablation --val_dir ./data/RUOD/RUOD_pic/train --experiment gating_sigma --sample-list ./ablation_samples_200_seed42.txt
-"""
-
 import argparse
 import csv
 import glob
@@ -32,10 +12,6 @@ import numpy as np
 from ..enhance_wrappers import apply_clahe_bgr
 from ..metrics.compute_metrics import compute_metrics
 
-
-# ----------------------------
-# IO utilities
-# ----------------------------
 def list_images(root_dir: str, exts: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp")) -> List[str]:
     files: List[str] = []
     for ext in exts:
@@ -87,7 +63,6 @@ def cfg_name_from_params(
     sigma: float,
     ag: float,
 ) -> str:
-    # stable short naming for folders
     return f"clip{clip:.2f}_tile{tile_grid[0]}x{tile_grid[1]}_g{int(gating)}_s{sigma:.3f}_ag{ag:.3f}"
 
 
@@ -107,9 +82,6 @@ def save_enhanced_image(
     cv2.imwrite(out_path, enhanced_bgr)
 
 
-# ----------------------------
-# Metrics aggregation
-# ----------------------------
 def _mean(xs: List[float]) -> float:
     return float(np.mean(xs)) if xs else 0.0
 
@@ -125,12 +97,7 @@ def evaluate_clahe_setting(
     save_imgs: bool = False,
     out_root: Optional[str] = None,
 ) -> Dict[str, float]:
-    """
-    CLAHE-only evaluation:
-      raw_m = compute_metrics(raw, raw)
-      clahe = apply_clahe_bgr(raw, ...)
-      enh_m = compute_metrics(clahe, raw)
-    """
+
     if save_imgs and out_root is None:
         raise ValueError("out_root must be provided when save_imgs=True")
 
@@ -139,7 +106,6 @@ def evaluate_clahe_setting(
 
     uiqm_deltas, uciqe_deltas, contrast_deltas = [], [], []
 
-    # Optional: also record gating/clahe internal info rates
     applied_flags: List[int] = []
     gains: List[float] = []
 
@@ -211,17 +177,8 @@ def evaluate_clahe_setting(
         "clahe_contrast_gain_mean": _mean(gains),
     }
 
-
-# ----------------------------
-# Experiments
-# ----------------------------
 def get_experiment_configs(experiment: str) -> List[Dict[str, Any]]:
-    """
-    Returns a list of configs to sweep.
-    Each config is a dict with keys:
-      clip_limit, tile_grid_size, use_gating, sigma_threshold, ag_threshold
-    """
-    # Base defaults (match your wrapper defaults)
+
     base = dict(
         clip_limit=2.0,
         tile_grid_size=(8, 8),
@@ -251,7 +208,6 @@ def get_experiment_configs(experiment: str) -> List[Dict[str, Any]]:
             cfgs.append(c)
 
     elif experiment == "gating_sigma":
-        # gating must be enabled, sweep sigma
         for s in [0.10, 0.15, 0.18, 0.20, 0.25]:
             c = base.copy()
             c["use_gating"] = True
@@ -259,7 +215,6 @@ def get_experiment_configs(experiment: str) -> List[Dict[str, Any]]:
             cfgs.append(c)
 
     elif experiment == "gating_ag":
-        # gating must be enabled, sweep AG threshold
         for ag in [0.04, 0.06, 0.08, 0.10]:
             c = base.copy()
             c["use_gating"] = True
@@ -267,7 +222,6 @@ def get_experiment_configs(experiment: str) -> List[Dict[str, Any]]:
             cfgs.append(c)
 
     elif experiment == "full_gating_grid":
-        # higher-standard: small grid for (sigma, ag) jointly with gating on
         sigmas = [0.15, 0.18, 0.20]
         ags = [0.04, 0.06, 0.08]
         for s in sigmas:
@@ -288,7 +242,6 @@ def cfg_to_row(cfg: Dict[str, Any], metrics: Dict[str, float]) -> Dict[str, Any]
     row = {}
     row.update(cfg)
     row.update(metrics)
-    # normalize tuple for csv readability
     tile = row.get("tile_grid_size", (8, 8))
     if isinstance(tile, tuple):
         row["tile_grid_size"] = f"{tile[0]}x{tile[1]}"
@@ -305,10 +258,6 @@ def write_csv(rows: List[Dict[str, Any]], out_path: str) -> None:
         w.writeheader()
         w.writerows(rows)
 
-
-# ----------------------------
-# CLI
-# ----------------------------
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="CLAHE-only ablation study (compute_metrics)")
     p.add_argument("--val_dir", type=str, required=True)
@@ -356,9 +305,6 @@ def main() -> None:
 
     rows: List[Dict[str, Any]] = []
 
-    # Baseline (raw) once, for sanity prints (optional)
-    # You still compute per-image raw metrics inside evaluate_clahe_setting for deltas,
-    # but this baseline helps you quickly see absolute values.
     raw_uiqm, raw_uciqe = [], []
     for path in image_paths:
         bgr = cv2.imread(path)
@@ -370,7 +316,6 @@ def main() -> None:
     if raw_uiqm:
         print(f"[BASELINE] raw mean UIQM={float(np.mean(raw_uiqm)):.4f}, UCIQE={float(np.mean(raw_uciqe)):.2f}")
 
-    # Sweep
     for i, cfg in enumerate(cfgs):
         metrics = evaluate_clahe_setting(
             image_paths=image_paths,
@@ -396,7 +341,6 @@ def main() -> None:
             f"applied={metrics['clahe_applied_rate']:.1f}%"
         )
 
-    # Rank + print top by UIQM
     rows_sorted = sorted(rows, key=lambda r: r.get("uiqm", 0.0), reverse=True)
     print("\n======================")
     print("Top configs by UIQM")
@@ -404,7 +348,6 @@ def main() -> None:
     for r in rows_sorted[:10]:
         print(r)
 
-    # Optional CSV
     if args.csv:
         write_csv(rows_sorted, args.csv)
         print(f"[INFO] Saved CSV to: {args.csv}")

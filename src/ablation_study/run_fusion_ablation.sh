@@ -1,15 +1,6 @@
-#!/usr/bin/env bash
+
 set -euo pipefail
 
-# ============================================================================
-# FUSION ABLATION STUDY - FIXED VERSION
-# ============================================================================
-
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-
-# FIXED: Use correct paths based on your folder structure
 VAL_IMG_DIR="./data/ruod_yolo_val_sub_500_raw/images/val"
 VAL_LABELS="./data/ruod_yolo_val_sub_500_raw/labels/val"
 
@@ -50,9 +41,6 @@ echo "  - CLAHE: clip=6.0, tile=32"
 echo "  - Denoise: gauss=3, median=3, bilateral=3, sharpen=0.1"
 echo ""
 
-# ============================================================================
-# PREPARE ENHANCED IMAGES FOR MAP EVALUATION
-# ============================================================================
 echo ""
 echo "=============================================="
 echo "PREPARING IMAGES FOR MAP EVALUATION"
@@ -121,9 +109,6 @@ EOF
     echo ""
 done
 
-# ============================================================================
-# RUN YOLO MAP EVALUATION
-# ============================================================================
 echo ""
 echo "=============================================="
 echo "RUNNING YOLO MAP EVALUATION"
@@ -169,9 +154,6 @@ for config_name in raw rcc_only clahe_only denoise_only 2input_rcc_clahe 3input_
         2>&1 | tee -a "$RESULTS_FILE"
 done
 
-# ============================================================================
-# GENERATE SUMMARY TABLES
-# ============================================================================
 echo ""
 echo "=============================================="
 echo "GENERATING SUMMARY TABLES"
@@ -312,9 +294,6 @@ print(latex)
 
 PYEOF
 
-# ============================================================================
-# DONE
-# ============================================================================
 echo ""
 echo "=============================================="
 echo "FUSION ABLATION COMPLETE"

@@ -1,5 +1,3 @@
-# src/contrast/tuning.py
-
 import os
 import cv2
 import numpy as np
@@ -64,10 +62,6 @@ def sweep_parameters(folder):
     tile_sizes = [6, 8, 12]
     clip_limits = [1.5, 2.0, 2.5, 3.0]
 
-    print("Evaluating CLAHE configs on folder:", folder)
-    print("----------------------------------------------------")
-    print("tile_size | clip_limit | avg_std(L) | avg_grad(L)")
-    print("----------------------------------------------------")
 
     results = []
 

@@ -1,5 +1,3 @@
-# src/contrast/gating.py
-
 import numpy as np
 from .stats import luminance_std, average_gradient
 

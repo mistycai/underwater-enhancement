@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-"""
-Underwater enhancement pipeline evaluation
-Generates demo results with fixed fusion
-
-Usage:
-    python run_eval_improved.py <input_image> <output_dir>
-    
-Example:
-    python3 run_evaluation.py ../../data/RUOD/Environment_pic/color/003593.jpg results/demo
-"""
-
 import os
 import sys
 import cv2
@@ -31,11 +19,8 @@ from src.contrast.pipeline import apply_clahe_to_bgr
 from src.fusion import multi_scale_fusion
 
 
-# BUILT-IN ENHANCEMENT FUNCTIONS
 
 def apply_rcc(bgr: np.ndarray, alpha: float = 1.2) -> np.ndarray:
-    '''Red Channel Compensation'''
-    #TODO: this is just a simple implementation
     img = bgr.astype(np.float64)
     B, G, R = img[:, :, 0], img[:, :, 1], img[:, :, 2]
     mu_r, mu_g = np.mean(R), np.mean(G)
@@ -48,7 +33,6 @@ def apply_rcc(bgr: np.ndarray, alpha: float = 1.2) -> np.ndarray:
 
 
 def apply_clahe(bgr: np.ndarray, clip_limit: float = 2.5, tile_size: int = 8) -> np.ndarray:
-    '''CLAHE on L channel with slightly higher clip limit for more contrast.'''
     lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2Lab)
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_size, tile_size))
     lab[:, :, 0] = clahe.apply(lab[:, :, 0])
@@ -56,15 +40,9 @@ def apply_clahe(bgr: np.ndarray, clip_limit: float = 2.5, tile_size: int = 8) ->
 
 
 def apply_denoise(bgr: np.ndarray) -> np.ndarray:
-    '''Light denoising to avoid over-smoothing'''
-    #TODO: this is just a simple implementation
     img = cv2.GaussianBlur(bgr, (3, 3), 0.8)
     img = cv2.bilateralFilter(img, 5, 15, 15)
     return img
-
-
-
-#### EVALUATION ####
 
 @dataclass
 class StageMetrics:
@@ -154,7 +132,6 @@ def save_plots(results: List[StageMetrics], output_dir: str, base_name: str):
 def save_comparison_image(original, fused, results, output_dir, base_name):
     h, w = original.shape[:2]
 
-    # resize if too large
     max_dim = 900
     if max(h, w) > max_dim:
         scale = max_dim / max(h, w)
@@ -163,9 +140,8 @@ def save_comparison_image(original, fused, results, output_dir, base_name):
         fused    = cv2.resize(fused,    (new_w, new_h), interpolation=cv2.INTER_AREA)
         h, w = new_h, new_w
 
-    ### layout params
-    top_margin    = 60     # titles
-    bottom_margin = 80     # metric text
+    top_margin    = 60   
+    bottom_margin = 80    
     side_margin   = 40
     gap           = 40
     border_thick  = 2
@@ -173,23 +149,18 @@ def save_comparison_image(original, fused, results, output_dir, base_name):
     canvas_h = h + top_margin + bottom_margin
     canvas_w = side_margin*2 + w*2 + gap
 
-    # soft gray background instead of pure white
     canvas = np.ones((canvas_h, canvas_w, 3), dtype=np.uint8) * 245
 
-    # panel positions
     x1 = side_margin
     x2 = side_margin + w + gap
     y0 = top_margin
 
-    # paste images
     canvas[y0:y0+h, x1:x1+w] = original
     canvas[y0:y0+h, x2:x2+w] = fused
 
-    # add thin borders around panels
     cv2.rectangle(canvas, (x1, y0), (x1+w, y0+h), (0, 0, 0), border_thick)
     cv2.rectangle(canvas, (x2, y0), (x2+w, y0+h), (0, 0, 0), border_thick)
 
-    ### titles
     title_font = cv2.FONT_HERSHEY_SIMPLEX
     title_scale = 1.0
     title_thick = 2
@@ -206,12 +177,10 @@ def save_comparison_image(original, fused, results, output_dir, base_name):
     put_centered("ORIGINAL", center1, 40, (0, 0, 0))
     put_centered("ENHANCED (Fused)", center2, 40, (0, 90, 0))
 
-    ### metrics summary
     if results is not None and len(results) >= 2:
         orig = results[0]
         fused_m = results[-1]
 
-        # percentage improvements
         def rel_improve(new, old):
             if abs(old) < 1e-6:
                 return 0.0
@@ -239,13 +208,11 @@ def save_comparison_image(original, fused, results, output_dir, base_name):
                         (center2 - tw // 2, base_y + i * (th + 6)),
                         metric_font, metric_scale, metric_color, metric_thick, cv2.LINE_AA)
 
-    # save
     path = os.path.join(output_dir, f"{base_name}_comparison.jpg")
     cv2.imwrite(path, canvas)
     print(f"Saved comparison: {path}")
 
 
-#### MAIN ####
 def run_evaluation(input_path: str, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
     
@@ -258,8 +225,7 @@ def run_evaluation(input_path: str, output_dir: str):
     
     print(f"\nEvaluating: {input_path}")
     print(f"   Image size: {W}x{H}")
-    
-    #TODO: try to use jacky & jingyi's modules
+
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         for root in [os.path.dirname(os.path.dirname(script_dir)), os.path.dirname(script_dir), script_dir]:
@@ -280,20 +246,16 @@ def run_evaluation(input_path: str, output_dir: str):
         clahe = apply_clahe_to_bgr(original)
         denoise = apply_denoise(original)
     
-    # apply fusion
-    print("   Applying fusion...")
-    # fused = multi_scale_fusion_improved(rcc, clahe, denoise, levels=4)
     fused = multi_scale_fusion(rcc, clahe, denoise, levels=4, verbose=True)
     fused = cv2.resize(fused, (W, H))
-    
-    # save all stages
+
     cv2.imwrite(os.path.join(output_dir, f"{base_name}_original.jpg"), original)
     cv2.imwrite(os.path.join(output_dir, f"{base_name}_rcc.jpg"), rcc)
     cv2.imwrite(os.path.join(output_dir, f"{base_name}_clahe.jpg"), clahe)
     cv2.imwrite(os.path.join(output_dir, f"{base_name}_denoise.jpg"), denoise)
     cv2.imwrite(os.path.join(output_dir, f"{base_name}_fused.jpg"), fused)
     
-    # evaluate
+
     print("   Computing metrics...")
     results = [
         evaluate_stage(original, original, "Original"),
@@ -305,10 +267,8 @@ def run_evaluation(input_path: str, output_dir: str):
     
     print_results(results, base_name)
     save_plots(results, output_dir, base_name)
-    # save_comparison_image(original, fused, output_dir, base_name)
     save_comparison_image(original, fused, results, output_dir, base_name)
     
-    # save CSV
     csv_path = os.path.join(output_dir, f"{base_name}_metrics.csv")
     with open(csv_path, 'w') as f:
         f.write("Stage,UIQM,UCIQE,Contrast_Gain,Entropy,Colorfulness,Avg_Gradient\n")

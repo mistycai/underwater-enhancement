@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-Apply enhancement to images for fusion ablation study.
-
-Usage:
-    python fusion_enhance_images.py INPUT_DIR OUTPUT_DIR CONFIG_TYPE
-"""
-
 import cv2
 import numpy as np
 import os
@@ -13,10 +5,8 @@ import sys
 from pathlib import Path
 from tqdm import tqdm
 
-# Add src to path
 sys.path.insert(0, 'src')
 
-# Configuration from command line
 if len(sys.argv) < 4:
     print("Usage: python fusion_enhance_images.py INPUT_DIR OUTPUT_DIR CONFIG_TYPE")
     sys.exit(1)
@@ -25,7 +15,7 @@ input_dir = sys.argv[1]
 output_dir = sys.argv[2]
 config_type = sys.argv[3]
 
-# Best parameters (can be overridden via environment)
+
 RCC_ALPHA = float(os.getenv('RCC_ALPHA', '0.5'))
 CLAHE_CLIP = float(os.getenv('CLAHE_CLIP', '6.0'))
 CLAHE_TILE = int(os.getenv('CLAHE_TILE', '32'))
@@ -42,7 +32,6 @@ print(f"Parameters: RCC α={RCC_ALPHA}, CLAHE clip={CLAHE_CLIP} tile={CLAHE_TILE
 
 
 def apply_rcc(bgr, alpha=0.5):
-    """Apply basic RCC (not WRCC) color correction."""
     try:
         from color_correction.rcc_wrcc import rcc_rgb
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
@@ -68,7 +57,6 @@ def apply_rcc(bgr, alpha=0.5):
 
 
 def apply_clahe(bgr, clip=6.0, tile=32):
-    """Apply CLAHE on L channel in LAB space."""
     lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
     
@@ -80,7 +68,6 @@ def apply_clahe(bgr, clip=6.0, tile=32):
 
 
 def apply_denoise(bgr, gauss=3, median=3, bilateral=3, sharpen=0.1):
-    """Apply denoising pipeline: Gaussian -> Median -> Bilateral -> Sharpen."""
     result = bgr.copy()
     
     # Gaussian blur
@@ -107,7 +94,6 @@ def apply_denoise(bgr, gauss=3, median=3, bilateral=3, sharpen=0.1):
 
 
 def build_gaussian_pyramid(img, levels):
-    """Build Gaussian pyramid."""
     pyramid = [img.astype(np.float32)]
     for _ in range(levels):
         img = cv2.pyrDown(pyramid[-1])
@@ -116,7 +102,6 @@ def build_gaussian_pyramid(img, levels):
 
 
 def build_laplacian_pyramid(img, levels):
-    """Build Laplacian pyramid."""
     gaussian = build_gaussian_pyramid(img, levels)
     laplacian = []
     
@@ -131,7 +116,6 @@ def build_laplacian_pyramid(img, levels):
 
 
 def collapse_pyramid(pyramid):
-    """Reconstruct image from Laplacian pyramid."""
     result = pyramid[-1]
     
     for i in range(len(pyramid) - 2, -1, -1):
@@ -143,16 +127,6 @@ def collapse_pyramid(pyramid):
 
 
 def multi_scale_fusion(images, levels=5):
-    """
-    Multi-scale Laplacian pyramid fusion.
-    
-    Args:
-        images: List of BGR images to fuse
-        levels: Number of pyramid levels
-    
-    Returns:
-        Fused BGR image
-    """
     if len(images) == 0:
         return None
     if len(images) == 1:
@@ -168,11 +142,9 @@ def multi_scale_fusion(images, levels=5):
         fused_level = np.mean(level_images, axis=0)
         fused_pyramid.append(fused_level)
     
-    # Reconstruct
     return collapse_pyramid(fused_pyramid)
 
 
-# Get all images
 images = sorted(Path(input_dir).glob("*.jpg"))
 print(f"Found {len(images)} images")
 
@@ -180,17 +152,15 @@ if len(images) == 0:
     print("ERROR: No images found!")
     sys.exit(1)
 
-# Create output directory
 os.makedirs(output_dir, exist_ok=True)
 
-# Process images
+
 for img_path in tqdm(images, desc=f"Processing {config_type}"):
     bgr = cv2.imread(str(img_path))
     if bgr is None:
         print(f"Warning: Cannot read {img_path}")
         continue
     
-    # Apply enhancement based on config
     if config_type == "none":
         result = bgr
     
@@ -205,13 +175,13 @@ for img_path in tqdm(images, desc=f"Processing {config_type}"):
                               DENOISE_BILATERAL, DENOISE_SHARPEN)
     
     elif config_type == "2input":
-        # 2-input fusion: RCC + CLAHE
+ 
         input1 = apply_rcc(bgr, RCC_ALPHA)
         input2 = apply_clahe(bgr, CLAHE_CLIP, CLAHE_TILE)
         result = multi_scale_fusion([input1, input2], levels=5)
     
     elif config_type == "3input":
-        # 3-input fusion: RCC + CLAHE + Denoise
+
         input1 = apply_rcc(bgr, RCC_ALPHA)
         input2 = apply_clahe(bgr, CLAHE_CLIP, CLAHE_TILE)
         input3 = apply_denoise(bgr, DENOISE_GAUSS, DENOISE_MEDIAN, 
@@ -222,7 +192,6 @@ for img_path in tqdm(images, desc=f"Processing {config_type}"):
         print(f"Warning: Unknown config type '{config_type}', using raw")
         result = bgr
     
-    # Save
     out_path = os.path.join(output_dir, img_path.name)
     cv2.imwrite(out_path, result)
 

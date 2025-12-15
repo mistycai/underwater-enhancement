@@ -1,4 +1,3 @@
-# src/contrast/module.py
 import cv2
 import numpy as np
 from .config import CLAHEConfig
@@ -6,10 +5,6 @@ from .clahe import apply_clahe_luminance
 from .gating import compute_luminance_stats, should_apply_clahe, soft_gate_mask
 
 class ContrastEnhancerCLAHE:
-    '''
-    Detection-aware CLAHE contrast module
-    '''
-
     def __init__(self, config: CLAHEConfig | None = None, use_soft_gate: bool = False):
         self.config = config or CLAHEConfig()
         self.use_soft_gate = use_soft_gate

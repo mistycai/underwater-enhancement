@@ -29,7 +29,7 @@ class PipelineConfig:
     add_salt_pepper_amount: float = 0.0  # set >0 to add synthetic noise
     add_salt_vs_pepper: float = 0.5
     per_channel_sp: bool = False
-    seed: Optional[int] = None  # for reproducibility of synthetic noise
+    seed: Optional[int] = None  
 
 
 def gaussian_smooth(img: np.ndarray, ksize: int = 5, sigma: float = 1.5) -> np.ndarray:
@@ -175,11 +175,10 @@ def compute_metrics(orig_bgr: np.ndarray, enhanced_bgr: np.ndarray) -> Dict[str,
             return 0.0
         return float((new_val - orig_val) / abs(orig_val) * 100.0)
 
-    # Similarity metrics between original and enhanced images.
     psnr_db = float(psnr_rgb(rgb_orig, rgb_enh))
     ssim_val = float(ssim_rgb(rgb_orig, rgb_enh))
 
-    contrast_ratio = float(contrast_gain(rgb_orig, rgb_enh))  # ratio >=0
+    contrast_ratio = float(contrast_gain(rgb_orig, rgb_enh)) 
     contrast_pct = (contrast_ratio - 1.0) * 100.0
 
     return {
@@ -187,10 +186,8 @@ def compute_metrics(orig_bgr: np.ndarray, enhanced_bgr: np.ndarray) -> Dict[str,
         "uciqe_pct_change": pct_change(uciqe_orig, uciqe_enh),
         "contrast_pct_change": contrast_pct,
         "psnr_db": psnr_db,
-        # Interpret change relative to perfect similarity (1.0).
         "ssim": ssim_val,
         "ssim_pct_change": (ssim_val - 1.0) * 100.0,
-        # For PSNR (unbounded), express change vs. a 60 dB high-quality reference.
         "psnr_pct_change": (psnr_db / 60.0) * 100.0,
     }
 

@@ -1,28 +1,3 @@
-#!/usr/bin/env python3
-"""
-Component-only ablation (NO fusion, NO "identity" tricks).
-
-Each experiment applies ONLY ONE module:
-  - RCC only
-  - WRCC only
-  - White balance only
-  - CLAHE only
-  - Denoise only
-
-It evaluates before/after metrics per image and aggregates results.
-
-Usage (from src/):
-  python -m ablation_study.ablation_study_components \
-      --input-root ../data/RUOD/RUOD_pic/train \
-      --experiment wrcc_alpha_only \
-      --num-samples 200
-
-  python -m ablation_study.ablation_study_components \
-      --input-root ../data/RUOD/RUOD_pic/train \
-      --experiment wb_only \
-      --num-samples 200
-"""
-
 import sys
 import cv2
 import json
@@ -35,9 +10,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Callable, Tuple
 
-# -------------------------
-# Path setup
-# -------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
 SRC_ROOT = SCRIPT_DIR.parent
 if str(SRC_ROOT) not in sys.path:
@@ -49,39 +21,15 @@ except ImportError:
     def tqdm(x, **kwargs):
         return x
 
-# -------------------------
-# Metrics (reuse your project)
-# -------------------------
 from run_fusion import compute_metrics, METRICS_AVAILABLE
 
-# -------------------------
-# TODO: IMPORT YOUR MODULES HERE
-# Replace these imports with your real ones.
-# -------------------------
-# Example expected signatures:
-#   apply_rcc_bgr(bgr: np.ndarray, alpha: float) -> np.ndarray
-#   apply_wrcc_bgr(bgr: np.ndarray, alpha: float, window_size: int, guided_radius: int) -> np.ndarray
-#   gray_world_white_balance(bgr: np.ndarray, lambda_param: float) -> np.ndarray
-#   apply_clahe_l_channel(bgr: np.ndarray, clip_limit: float, tile_grid_size: Tuple[int,int],
-#                         use_gating: bool, sigma_th: float, ag_th: float) -> np.ndarray
-#   apply_denoise(bgr: np.ndarray, bilateral_d: int, sharpen_strength: float, ...) -> np.ndarray
+from run_fusion import gray_world_white_balance  
 
-# --- Replace with your real paths ---
-from run_fusion import gray_world_white_balance  # if you have it in run_fusion
-# from color.rcc import apply_rcc_bgr, apply_wrcc_bgr
-# from clahe.clahe import apply_clahe_l_channel
-# from denoise.denoise import apply_denoise
-
-# If your functions live inside run_fusion.py, import from there instead:
-from run_fusion import apply_rcc_bgr, apply_wrcc_bgr, apply_clahe_l_channel, apply_denoise  # <-- EDIT if needed
+from run_fusion import apply_rcc_bgr, apply_wrcc_bgr, apply_clahe_l_channel, apply_denoise 
 
 
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
-
-# -------------------------
-# Data classes
-# -------------------------
 @dataclass
 class ExperimentResult:
     param_name: str
@@ -113,10 +61,6 @@ class AblationStudy:
     num_samples: int
     results: List[ExperimentResult] = field(default_factory=list)
 
-
-# -------------------------
-# Sampling
-# -------------------------
 def collect_and_sample_images(input_root: Path, num_samples: int, seed: int = 42) -> List[Path]:
     all_paths = [p for p in input_root.rglob("*") if p.is_file() and p.suffix.lower() in IMG_EXTS]
     all_paths = sorted(all_paths)
@@ -128,9 +72,6 @@ def collect_and_sample_images(input_root: Path, num_samples: int, seed: int = 42
     return sorted(random.sample(all_paths, num_samples))
 
 
-# -------------------------
-# Component processors (ONLY one applied)
-# -------------------------
 def proc_rcc_only(bgr: np.ndarray, p: Dict[str, Any]) -> np.ndarray:
     return apply_rcc_bgr(bgr, alpha=float(p["rcc_alpha"]))
 
@@ -143,15 +84,12 @@ def proc_wrcc_only(bgr: np.ndarray, p: Dict[str, Any]) -> np.ndarray:
     )
 
 def proc_wb_only(bgr: np.ndarray, p: Dict[str, Any]) -> np.ndarray:
-    # IMPORTANT: make WB truly no-op at lambda=0.0 inside this function.
     lam = float(p["wb_lambda"])
     if lam <= 0.0:
         return bgr.copy()
     return gray_world_white_balance(bgr, lambda_param=lam)
 
 def proc_clahe_only(bgr: np.ndarray, p: Dict[str, Any]) -> np.ndarray:
-    # CLAHE is applied on luminance only (your detection-aware CLAHE pipeline idea),
-    # but since this is "component-only", we apply it directly here.
     return apply_clahe_l_channel(
         bgr,
         clip_limit=float(p["clahe_clip_limit"]),
@@ -172,16 +110,7 @@ def proc_denoise_only(bgr: np.ndarray, p: Dict[str, Any]) -> np.ndarray:
     )
 
 
-# -------------------------
-# Experiment configs (component-only)
-# -------------------------
-# Each experiment defines:
-#   - processor: which single component function to call
-#   - param: swept param name
-#   - values: swept values list
-#   - fixed: other params required by that component
 EXPERIMENT_CONFIGS: Dict[str, Dict[str, Any]] = {
-    # RCC/WRCC only
     "rcc_alpha_only": {
         "processor": proc_rcc_only,
         "param": "rcc_alpha",
@@ -282,9 +211,6 @@ EXPERIMENT_CONFIGS: Dict[str, Dict[str, Any]] = {
 }
 
 
-# -------------------------
-# Core runner
-# -------------------------
 def run_single_config(
     image_paths: List[Path],
     processor: Callable[[np.ndarray, Dict[str, Any]], np.ndarray],
@@ -315,7 +241,7 @@ def run_single_config(
 
             if METRICS_AVAILABLE:
                 orig_m = compute_metrics(bgr, bgr, "Original")
-                out_m  = compute_metrics(out, bgr, "Out")  # use original as reference if your metric code expects it
+                out_m  = compute_metrics(out, bgr, "Out") 
 
                 uiqm_orig.append(orig_m.uiqm)
                 uiqm_out.append(out_m.uiqm)
@@ -403,10 +329,6 @@ def run_ablation_study(experiment_name: str, image_paths: List[Path], output_dir
 
     return study
 
-
-# -------------------------
-# Save outputs (JSON/CSV/LaTeX)
-# -------------------------
 def save_study_json(study: AblationStudy, output_dir: Path):
     output_dir.mkdir(parents=True, exist_ok=True)
     data = {

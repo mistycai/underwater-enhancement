@@ -30,12 +30,6 @@ def sample_images(
     sample_list: Optional[str] = None,
     save_sample_list: Optional[str] = None,
 ) -> List[str]:
-    """
-    Priority:
-      1) If sample_list is provided and exists => read paths from file (most reproducible)
-      2) Else if num_samples is None or >= len(image_paths) => use all
-      3) Else => random sample with fixed seed
-    """
     if sample_list:
         if not os.path.isfile(sample_list):
             raise FileNotFoundError(f"--sample-list not found: {sample_list}")
@@ -100,10 +94,6 @@ def evaluate_setting(
     save_imgs: bool = False,
     out_root: Optional[str] = None,
 ) -> Dict[str, float]:
-    """
-    Returns mean metrics over all images for the given setting.
-    Uses metrics.compute_metrics(img, original, name) => ImageMetrics
-    """
     uiqm_vals: List[float] = []
     uciqe_vals: List[float] = []
     contrast_vals: List[float] = []
