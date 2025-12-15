@@ -1,50 +1,61 @@
-# python
+# =========================
+# Python
+# =========================
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 *.pyd
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# =========================
+# Virtual environments
+# =========================
 .env/
 .venv/
 venv/
 
-# jupyter
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
 !notebooks/README.md
 !.gitkeep
-.ipynb_checkpoints/
 
-# data & models
-data/*
-!data/README.md
-results/*
-!results/README.md
-runs/
-weights/
-
-# OS / misc
+# =========================
+# OS / editor
+# =========================
 .DS_Store
+Thumbs.db
 
-__pycache__/
+# large data / outputs
+data/**
+!data/README.md
+!data/**/.gitkeep
 
-# local experiment outputs
-training logs/
-runs/
+results/**
+!results/README.md
+!results/**/.gitkeep
+
+runs/**
+weights/**
 *.pt
 
-# CLAHE test outputs
+# local experiment outputs
+training logs/**
+
+# CLAHE / demo outputs
 clahe_*.png
 pipeline_test.png
-clahe_samples_out/
+clahe_samples_out/**
 
 # metrics demo outputs
-src/metrics/results/
+src/metrics/results/**
+src/results/**
 
-src/results/*
-
-*.jpg
-*.png
+# images & archives
 *.zip
-*.yaml
-*.csv
-*.json
-*.tex
+*.jpg
+*.jpeg
+*.png
